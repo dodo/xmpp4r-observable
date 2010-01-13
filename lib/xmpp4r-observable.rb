@@ -97,7 +97,6 @@ module Jabber
 			# Creates a new PubSub object
 			#
 			# observable:: points a Jabber::Observable object
-			# jid:: an alternative service jid
 			def initialize(observable, jid = nil)
 				@observable = observable
 
@@ -109,7 +108,11 @@ module Jabber
 			def attach!(servicejid = nil)
 				begin
 					domain = Jabber::JID.new(@observable.jid).domain
-					@service_jid =  "pubsub." + domain if servicejid.nil?
+					if servicejid.nil?
+						@service_jid =  "pubsub." + domain
+					else
+						@service_jid = servicejid
+					end
 					set_service(@service_jid)
 				rescue
 					@helper = @service_jid = nil
