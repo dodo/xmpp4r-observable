@@ -501,22 +501,9 @@ module Jabber
 		# message should be a string or a valid Jabber::Message object. In either case,
 		# the message recipient will be set to jid.
 		def deliver(jid, message, type=:chat)
-			contacts(jid) do |friend|
-				unless @subs.subscribed_to? friend
-					@subs.add(friend.jid)
-					return deliver_deferred(friend.jid, message, type)
-				end
-				if message.kind_of?(Jabber::Message)
-					msg = message
-					msg.to = friend.jid
-				else
-					msg = Message.new(friend.jid)
-					msg.type = type
-					msg.body = message
-				end
-				@delivered_messages += 1
-				send!(msg)
-			end
+                       msg = Jabber::Message.new(jid, message)
+                       msg.type = type
+                       send!(msg)
 		end
 
 		# Set your presence, with a message.
