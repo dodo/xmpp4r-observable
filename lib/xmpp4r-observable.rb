@@ -79,7 +79,7 @@ module Jabber
 		def roster_item
 			client.roster.items[jid]
 		end
-	 
+
 		def client
 			@client
 		end
@@ -97,18 +97,19 @@ module Jabber
 			# Creates a new PubSub object
 			#
 			# observable:: points a Jabber::Observable object
-			def initialize(observable)
+			# jid:: an alternative service jid
+			def initialize(observable, jid = nil)
 				@observable = observable
 
 				@helper = @service_jid = nil
 				@disco = Jabber::Discovery::Helper.new(@observable.client)
-				attach!
+				attach! jid
 			end
 
-			def attach!
+			def attach!(servicejid = nil)
 				begin
 					domain = Jabber::JID.new(@observable.jid).domain
-					@service_jid = "pubsub." + domain
+					@service_jid =  "pubsub." + domain if servicejid.nil?
 					set_service(@service_jid)
 				rescue
 					@helper = @service_jid = nil
@@ -128,7 +129,7 @@ module Jabber
 			def has_service?
 				! @helper.nil?
 			end
-	
+
 			# Sets the PubSub service. Just one service is allowed. If nil, reset.
 			def set_service(service)
 				if service.nil?
@@ -145,26 +146,26 @@ module Jabber
 					end
 				end
 			end
-	
+
 			# Subscribe to a node.
 			def subscribe_to(node)
 				raise_noservice if ! has_service?
 				@helper.subscribe_to(node) unless is_subscribed_to?(node)
 			end
-	
+
 			# Unsubscribe from a node.
 			def unsubscribe_from(node)
 				raise_noservice if ! has_service?
-	
+
 				# FIXME
 				# @helper.unsubscribe_from(node)
 				# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 				# The above should just work, but I had to reimplement it since XMPP4R doesn't support subids
 				# and OpenFire (the Jabber Server I am testing against) seems to require it.
-	
+
 				subids = find_subids_for(node)
 				return if subids.empty?
-	
+
 				subids.each do |subid|
 					iq = Jabber::Iq.new(:set, @service_jid)
 					iq.add(Jabber::PubSub::IqPubSub.new)
@@ -180,13 +181,13 @@ module Jabber
 					end # @stream.send_with_id(iq)
 				end
 			end
-	
+
 			# Return the subscriptions we have in the configured PubSub service.
 			def subscriptions
 				raise_noservice if ! has_service?
 				@helper.get_subscriptions_from_all_nodes()
 			end
-	
+
 			# Create a PubSub node (Lots of options still have to be encoded!)
 			def create_node(node)
 				raise_noservice if ! has_service?
@@ -199,7 +200,7 @@ module Jabber
 				@my_nodes << node if defined? @my_nodes
 				node
 			end
-	
+
 			# Return an array of nodes I own
 			def my_nodes
 				if ! defined? @my_nodes
@@ -244,7 +245,7 @@ module Jabber
 				end
 				return ret
 			end
-	
+
 			# Delete a PubSub node (Lots of options still have to be encoded!)
 			def delete_node(node)
 				raise_noservice if ! has_service?
@@ -257,28 +258,28 @@ module Jabber
 				@my_nodes.delete(node) if defined? @my_nodes
 				node
 			end
-	
+
 			# Publish an Item. This infers an item of Jabber::PubSub::Item kind is passed
 			def publish_item(node, item)
 				raise_noservice if ! has_service?
 				@helper.publish_item_to(node, item)
 			end
-	
+
 			# Publish Simple Item. This is an item with one element and some text to it.
 			def publish_simple_item(node, text)
 				raise_noservice if ! has_service?
-	
+
 				item = Jabber::PubSub::Item.new
 				xml = REXML::Element.new('value')
 				xml.text = text
 				item.add(xml)
 				publish_item(node, item)
 			end
-	
+
 			# Publish atom Item. This is an item with one atom entry with title, body and time.
 			def publish_atom_item(node, title, body, time = Time.now)
 				raise_noservice if ! has_service?
-	
+
 				item = Jabber::PubSub::Item.new
 				entry = REXML::Element.new('entry')
 				entry.add_namespace("http://www.w3.org/2005/Atom")
@@ -329,9 +330,9 @@ module Jabber
 					@helper.get_items_from(node, count)
 				end
 			end
-	
+
 			private
-	
+
 			def find_subids_for(node) #:nodoc:
 				ret = []
 				subscriptions.each do |subscription|
@@ -362,7 +363,7 @@ module Jabber
 			# re-authorization, first remove() the user, then re-add them.
 			#
 			# Example usage:
-			# 
+			#
 			#	 jabber_observable.subs.add("friend@friendosaurus.com")
 			#
 			# Because the authorization process might take a few seconds, or might
@@ -374,14 +375,14 @@ module Jabber
 					friend.ask_for_authorization!
 				end
 			end
-	
+
 			# Remove the jabber users specified by jids from the contact list.
 			def remove(*jids)
 				@observable.contacts(*jids) do |unfriend|
 					unfriend.unsubscribe!
 				end
 			end
-	
+
 			# Returns true if this Jabber account is subscribed to status updates for
 			# the jabber user jid, false otherwise.
 			def subscribed_to?(jid)
@@ -396,7 +397,7 @@ module Jabber
 				@accept = true if @accept.nil?
 				@accept
 			end
-	
+
 			# Change whether or not subscriptions (friend requests) are automatically accepted.
 			def accept=(accept_status)
 				@accept=accept_status
@@ -483,7 +484,7 @@ module Jabber
 		# Send a message to jabber user jid.
 		#
 		# Valid message types are:
-		# 
+		#
 		#	 * :normal (default): a normal message.
 		#	 * :chat: a one-to-one chat message.
 		#	 * :groupchat: a group-chat message.
@@ -518,7 +519,7 @@ module Jabber
 		# Set your presence, with a message.
 		#
 		# Available values for presence are:
-		# 
+		#
 		#	 * nil: online.
 		#	 * :chat: free for chat.
 		#	 * :away: away from the computer.
@@ -630,7 +631,7 @@ module Jabber
 			@deferred_max_wait || 600
 		end
 
-		private 
+		private
 
 		def client=(client)
 			self.roster = nil # ensure we clear the roster, since that's now associated with a different client.
