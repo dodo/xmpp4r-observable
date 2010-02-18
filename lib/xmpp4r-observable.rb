@@ -500,8 +500,15 @@ module Jabber
 		#
 		# message should be a string or a valid Jabber::Message object. In either case,
 		# the message recipient will be set to jid.
-		def deliver(jid, message, type=:chat)
+		def deliver(jid, message, type=:chat, xhtml=nil)
                        msg = Jabber::Message.new(jid, message)
+                       unless xhtml.nil?
+                         if xhtml.is_a? Array
+                           xhtml.each { |elem| msg.add_element(elem) }
+                         else
+                           msg.add_element(xhtml)
+                         end
+                       end
                        msg.type = type
                        send!(msg)
 		end
